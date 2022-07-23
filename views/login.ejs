@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录</title>
+    <!-- axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+      // 请求拦截器
+      axios.interceptors.request.use(
+        config => {
+          // 请求之前触发
+
+          console.log('请求配置选项:', config)
+          return config
+        },
+        error => {
+          // 请求出错触发
+          return Promise.reject(error)
+        }
+      )
+
+      // 响应拦截器
+      axios.interceptors.response.use(
+        response => {
+          // 响应成功触发
+          // 任何处于2xx范围内的状态代码都会导致此函数触发
+
+          const { authorization } = response.headers
+          // 在本地 localStorage 中存储 token
+          authorization && localStorage.setItem('mu_token', authorization)
+
+          console.log('响应成功:', response)
+          return response.data
+        },
+        error => {
+          // 响应出错触发
+          // 任何超出此范围的状态代码的2XX原因此功能可触发
+
+          // 提示信息
+          return Promise.reject(error)
+        }
+      )
+    </script>
+  </head>
+  <body>
+    <h2>登录页面</h2>
+    <form>
+      <label>
+        用户名:
+        <input type="text" name="username" id="username" />
+      </label>
+      <br />
+      <label>
+        密 码:
+        <input type="text" name="password" id="password" />
+      </label>
+      <br />
+      <div>
+        <button type="button" id="loginBtn">登录</button>
+      </div>
+    </form>
+
+    <script>
+      const username = document.querySelector('#username')
+      const password = document.querySelector('#password')
+      const loginBtn = document.querySelector('#loginBtn')
+
+      // 登录
+      loginBtn.onclick = () => {
+        axios
+          .post('/users/login', {
+            username: username.value,
+            password: password.value,
+          })
+          .then(res => {
+            console.log('登录 ==> ', res)
+            if (res.code === 200) {
+              localStorage.setItem(
+                'userInfo',
+                JSON.stringify({
+                  username: res.data.username,
+                  avatar: res.data.avatar,
+                })
+              )
+              location.href = '/'
+            } else {
+              alert(res.msg)
+            }
+          })
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/stylesheets/style.css" />
+    <style>
+      table {
+        /* 合并表单边框 */
+        border-collapse: collapse;
+      }
+      td {
+        padding: 0 5px;
+        border: 1px solid #000;
+      }
+      td img {
+        width: 80px;
+        height: 80px;
+      }
+    </style>
+    <!-- axios -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+      // 请求拦截器
+      axios.interceptors.request.use(
+        config => {
+          // 请求之前触发
+          const token = localStorage.getItem('mu_token')
+          // 发送请求时，携带 token (Bearer 持票人)
+          config.headers.Authorization = `Bearer ${token}`
+
+          console.log('请求配置选项:', config)
+          return config
+        },
+        error => {
+          // 请求出错触发
+          return Promise.reject(error)
+        }
+      )
+
+      // 响应拦截器
+      axios.interceptors.response.use(
+        response => {
+          // 响应成功触发
+          // 任何处于2xx范围内的状态代码都会导致此函数触发
+
+          const { authorization } = response.headers
+          // 在本地 localStorage 中存储 token
+          authorization && localStorage.setItem('mu_token', authorization)
+
+          console.log('响应成功:', response)
+          return response.data
+        },
+        error => {
+          // 响应出错触发
+          // 任何超出此范围的状态代码的2XX原因此功能可触发
+
+          if (error.response.status === 401) {
+            localStorage.removeItem('mu_token')
+            location.href = '/login'
+          }
+
+          // 提示信息
+          return Promise.reject(error)
+        }
+      )
+    </script>
+  </head>
+  <body>
+    <h1>
+      后台系统-用户管理业务
+      <button id="logoutBtn">退出登录</button>
+    </h1>
+    <form>
+      <label>
+        用户名:
+        <input type="text" name="username" id="username" />
+      </label>
+      <br />
+      <br />
+      <label>
+        密 码:
+        <input type="text" name="password" id="password" />
+      </label>
+      <br />
+      <br />
+      <label>
+        年 龄:
+        <input type="number" name="age" id="age" />
+      </label>
+      <br />
+      <br />
+      <label>
+        头像:
+        <input type="file" name="avatar" id="avatar" />
+      </label>
+      <br />
+      <br />
+
+      <div>
+        <button type="button" id="logonBtn">注册</button>
+        <hr />
+        <button type="button" id="updateBtn">更新</button>
+        <button type="button" id="deleteBtn">删除</button>
+        <a href="/chat">进入聊天室01</a>
+        <a href="/chat2">进入聊天室02</a>
+      </div>
+    </form>
+    <hr />
+    <table>
+      <thead>
+        <tr>
+          <td>ID</td>
+          <td>头像</td>
+          <td>用户名</td>
+          <td>年龄</td>
+          <td>操作</td>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const username = document.querySelector('#username')
+      const password = document.querySelector('#password')
+      const age = document.querySelector('#age')
+      const avatar = document.querySelector('#avatar')
+      const logonBtn = document.querySelector('#logonBtn')
+      const logoutBtn = document.querySelector('#logoutBtn')
+      const updateBtn = document.querySelector('#updateBtn')
+      const deleteBtn = document.querySelector('#deleteBtn')
+
+      // 注册
+      logonBtn.onclick = () => {
+        console.log('注册')
+        console.log('avatar ==> ', avatar.files)
+
+        const formData = new FormData()
+        formData.append('username', username.value)
+        formData.append('password', password.value)
+        formData.append('age', age.value)
+        formData.append('avatar', avatar.files[0])
+
+        axios
+          .post('/users', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          })
+          .then(res => {
+            console.log(res)
+            if (res.code === 401) {
+              return (location.href = '/login')
+            }
+            getList(1, 6)
+          })
+      }
+
+      // 更新
+      updateBtn.onclick = () => {
+        console.log('更新')
+        console.log('avatar ==> ', avatar.files)
+
+        const formData = new FormData()
+        formData.append('username', username.value)
+        formData.append('password', password.value)
+        formData.append('age', age.value)
+        formData.append('avatar', avatar.files[0])
+
+        axios
+          .put(`/users/${username.value}`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          })
+          .then(res => {
+            console.log(res)
+            if (res.code === 401) {
+              return (location.href = '/login')
+            }
+            getList()
+          })
+      }
+
+      // 删除
+      deleteBtn.onclick = () => {
+        console.log('删除')
+        delUser(username.value)
+      }
+
+      function delUser(userInfo) {
+        axios.delete(`/users/${userInfo}`).then(res => {
+          console.log(res)
+          if (res.code === 401) {
+            return (location.href = '/login')
+          }
+          getList()
+        })
+      }
+
+      // 获取列表
+      function getList(page = 1, limit = 5) {
+        axios.get(`/users?page=${page}&limit=${limit}`).then(res => {
+          console.log(res)
+          if (res.code === 401) {
+            return (location.href = '/login')
+          }
+          const tbody = document.querySelector('tbody')
+          tbody.innerHTML = res.data
+            .map(
+              item => `
+                  <tr>
+                    <td>${item._id}</td>
+                    <td><img src="${item.avatar}" alt="头像"></td>
+                    <td>${item.username}</td>
+                    <td>${item.age}</td>
+                    <td>
+                      <a href='javascript:;' class="delBtn"
+                        data-name=${item.username}
+                        onclick="delUser('${item.username}')"
+                      >
+                        删除
+                      </a>
+                    </td>
+                  </tr>
+                `
+            )
+            .join('')
+        })
+      }
+      getList()
+
+      logoutBtn.onclick = () => {
+        fetch('/users/logout')
+          .then(res => res.json())
+          .then(res => {
+            if (res.code === 401) {
+              localStorage.removeItem('mu_token')
+              location.href = '/login'
+            }
+          })
+      }
+    </script>
+  </body>
+</html>

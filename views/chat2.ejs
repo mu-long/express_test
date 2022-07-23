@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chat 聊天</title>
+    <!-- 引入socket.io 客户端 -->
+    <script src="/javascripts/socket.io.min.js"></script>
+    <style>
+      #username {
+        color: hotpink;
+      }
+
+      .msg_box,
+      #friendName,
+      .input_box {
+        /* 添加盒模型可以稳固页面的结构 */
+        box-sizing: border-box;
+      }
+
+      .msg_box {
+        position: relative;
+        margin: 0 auto;
+        padding: 0 10px 10px;
+        width: 400px;
+        min-height: 450px;
+        border-radius: 8px;
+        border: 1px solid #000;
+        background: #e59dd6;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      #friendName {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 35px;
+        padding: 5px 10px;
+        text-align: center;
+        color: #fff;
+        border-bottom: 1px solid #000;
+      }
+
+      .info_box {
+        height: 460px;
+        margin-top: 35px;
+        margin-bottom: 45px;
+        padding-bottom: 5px;
+        overflow: auto;
+      }
+
+      .info {
+        margin: 5px 0;
+        display: flex;
+        justify-content: left;
+        align-items: center;
+      }
+      .right_info {
+        justify-content: end;
+      }
+
+      .msg_info {
+        position: relative;
+        display: inline-block;
+        margin: 5px;
+        padding: 8px;
+        background: rgb(77, 233, 66);
+        border-radius: 10px;
+      }
+
+      .left_msg {
+        background: skyblue;
+      }
+
+      .avatar {
+        display: inline-block;
+        width: 35px;
+        height: 35px;
+        margin: 5px 8px;
+        border-radius: 50%;
+      }
+
+      .name {
+        margin-top: -10px;
+        text-align: center;
+        font-size: 14px;
+        color: #eee;
+      }
+
+      .radio {
+        width: 50%;
+        margin: 10px auto;
+        padding: 5px;
+        background: rgba(0, 0, 0, 0.2);
+        text-align: center;
+        font-size: 14px;
+        color: #fff;
+        border-radius: 15px;
+      }
+
+      #msgText,
+      #selectUser,
+      #sendMsg {
+        height: 30px;
+        margin: 0 5px;
+        /* 默认边框 */
+        border: none;
+        /* 轮廓线 */
+        outline: 0;
+      }
+
+      #msgText {
+        padding: 0 10px;
+      }
+
+      .disabled {
+        cursor: not-allowed;
+        color: #a3a3a3;
+      }
+
+      #sendMsg {
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0 5px;
+        font-size: 14px;
+        background: rgb(77, 233, 66);
+        border-radius: 5px;
+      }
+      #sendMsg:hover {
+        opacity: 0.8;
+      }
+
+      .input_box {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 55px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+        padding: 0 12px;
+        border-top: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Socket.io 聊天室</h2>
+    <h4>
+      欢迎
+      <!-- 登录成功保存用户名到 localStorage -->
+      <b id="username"></b>
+      用户来到聊天室！开始愉快聊天吧！
+    </h4>
+    <div class="msg_box">
+      <!-- friend 朋友 -->
+      <div id="friendName">admin</div>
+      <!-- 信息显示框 -->
+      <div class="info_box" id="info_box">
+        <!-- 测试聊天 -->
+        <div class="info">
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">admin</div>
+          </div>
+          <p class="left_msg msg_info">在干什么？</p>
+        </div>
+        <!-- 广播 -->
+        <div class="radio">欢迎来到聊天室...</div>
+
+        <div class="info right_info">
+          <p class="right_msg msg_info">吃饭</p>
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">me</div>
+          </div>
+        </div>
+        <div class="info right_info">
+          <p class="right_msg msg_info">有什么事吗？</p>
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">me</div>
+          </div>
+        </div>
+        <div class="info">
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">admin</div>
+          </div>
+          <p class="left_msg msg_info">爱就像蓝天白云，晴空万里！</p>
+        </div>
+        <div class="info right_info">
+          <p class="right_msg msg_info">突然好想你？</p>
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">me</div>
+          </div>
+        </div>
+        <div class="info">
+          <div class="user">
+            <img src="/images/默认男头.png" class="avatar" alt="avatar" />
+            <div class="name">admin</div>
+          </div>
+          <p class="left_msg msg_info">为什么要抢答呢？难道。。。？</p>
+        </div>
+        <!-- 广播 -->
+        <div class="radio">提示：以上仅为测试聊天，为固定格式，可能显示有问题！</div>
+        <div class="radio">警告：默认会给所有用户发送信息！私聊请选择用户后，发送信息！</div>
+      </div>
+      <!-- 信息输入框 -->
+      <div class="input_box">
+        <input type="text" id="msgText" />
+        <!-- 选择聊天 -->
+        <select id="selectUser"></select>
+        <div id="sendMsg">发送信息</div>
+      </div>
+    </div>
+
+    <script>
+      const msgText = document.querySelector('#msgText')
+      const selectUser = document.querySelector('#selectUser')
+      const sendMsg = document.querySelector('#sendMsg')
+      const username = document.querySelector('#username')
+      const friendName = document.querySelector('#friendName')
+      const info_box = document.querySelector('.info_box')
+      username.innerHTML = localStorage.getItem('userInfo')
+        ? JSON.parse(localStorage.getItem('userInfo')).username
+        : ''
+
+      const WebSocketType = {
+        Error: 0, // 错误
+        GetList: 1, // 获取列表
+        GroupChat: 2, // 群聊
+        SingleChat: 3, // 私聊
+      }
+      const token = localStorage.getItem('mu_token')
+      // 建立 Socket.io连接 带着token，后端验证
+      const socket = io(`ws://localhost:3000?token=${token}`)
+
+      // 监听错误
+      socket.on(WebSocketType.Error, msg => {
+        localStorage.removeItem('mu_token')
+        location.href = '/login'
+      })
+
+      // 监听群聊
+      socket.on(WebSocketType.GroupChat, msg => {
+        console.log('群聊 ==> ', msg)
+        const { data, avatar, to } = msg.data
+        const title = msg.user ? msg.user.username : '广播'
+        console.log(title + '：', data)
+
+        friendName.innerHTML = ''
+        friendName.innerHTML = to ? to : '群聊'
+
+        // 动态创建元素
+        const mydiv = document.createElement('div')
+
+        if (msg.user) {
+          mydiv.innerHTML = `
+            <div class="info">
+              <div class="user">
+                <img src=${avatar} class="avatar" alt="avatar" />
+                <div class="name">${msg.user.username}</div>
+              </div>
+              <p class="left_msg msg_info">${data}</p>
+            </div>`
+        } else {
+          // radio 广播
+          mydiv.innerHTML = `<div class="radio">欢迎来到聊天室...</div>`
+        }
+        info_box.append(mydiv)
+
+        // 滚动到最新消息
+        msgScroll('info_box')
+      })
+
+      // 监听私聊
+      socket.on(WebSocketType.SingleChat, msg => {
+        console.log('私聊 ==> ', msg)
+        const { user, data, avatar, to } = msg.data
+        const title = msg.user ? msg.user.username : '广播'
+        console.log(title + '：', data)
+
+        friendName.innerHTML = ''
+        friendName.innerHTML = user ? user : '群聊'
+
+        // 动态创建元素
+        const mydiv = document.createElement('div')
+
+        if (msg.user) {
+          mydiv.innerHTML = `
+            <div class="info">
+              <div class="user">
+                <img src=${avatar} class="avatar" alt="avatar" />
+                <div class="name">${msg.user.username}</div>
+              </div>
+              <p class="left_msg msg_info">${data}</p>
+            </div>`
+        } else {
+          // radio 广播
+          mydiv.innerHTML = `<div class="radio">欢迎来到聊天室...</div>`
+        }
+        info_box.append(mydiv)
+
+        // 滚动到最新消息
+        msgScroll('info_box')
+      })
+
+      // 监听获取列表
+      socket.on(WebSocketType.GetList, msg => {
+        const userList = msg.data
+        console.log('获取列表：', userList)
+        const username = JSON.parse(localStorage.getItem('userInfo')).username
+        selectUser.innerHTML = ''
+        selectUser.innerHTML =
+          `<option value="all">全部用户</option>` +
+          userList
+            .map(
+              item => `
+              <option value="${item.username}"
+                class="${username === item.username ? 'disabled' : ''}"
+                ${username === item.username ? ' disabled' : ''}
+              >${item.username}</option>`
+            )
+            .join('')
+      })
+
+      // 点击发送消息
+      sendMsg.onclick = () => {
+        const username = JSON.parse(localStorage.getItem('userInfo')).username
+        let avatar = JSON.parse(localStorage.getItem('userInfo')).avatar
+
+        if (selectUser.value === 'all') {
+          console.log('群发', username)
+
+          friendName.innerHTML = ''
+          friendName.innerHTML = '群聊'
+
+          // 触发群聊事件
+          socket.emit(WebSocketType.GroupChat, createMsg(username, msgText.value, null, avatar))
+          // 动态创建元素
+          const mydiv = document.createElement('div')
+          mydiv.innerHTML = `
+            <div class="info right_info">
+              <p class="right_msg msg_info">${msgText.value}</p>
+              <div class="user">
+                <img src=${avatar} class="avatar" alt="avatar" />
+                <div class="name">${username}</div>
+              </div>
+            </div>`
+          info_box.append(mydiv)
+        } else {
+          console.log('私聊')
+
+          friendName.innerHTML = ''
+          friendName.innerHTML = selectUser.value
+
+          // 触发私聊事件
+          socket.emit(
+            WebSocketType.SingleChat,
+            createMsg(username, msgText.value, selectUser.value, avatar)
+          )
+          // 动态创建元素
+          const mydiv = document.createElement('div')
+          mydiv.innerHTML = `
+            <div class="info right_info">
+              <p class="right_msg msg_info">${msgText.value}</p>
+              <div class="user">
+                <img src=${avatar} class="avatar" alt="avatar" />
+                <div class="name">${username}</div>
+              </div>
+            </div>`
+          info_box.append(mydiv)
+        }
+
+        // 滚动到最新消息
+        msgScroll('info_box')
+
+        // 清空输入框文本
+        msgText.value = ''
+      }
+
+      // 创建消息
+      function createMsg(user, data, to, avatar) {
+        return {
+          user, // 用户名
+          data, // 数据内容
+          to, // 接收者
+          avatar, // 当前用户头像
+        }
+      }
+
+      // 滚动到最新消息
+      function msgScroll(elementId) {
+        const ele = document.getElementById(elementId)
+        // 获取到对应的元素,设置元素的scrollTop为元素的scrollHeight
+        // scrollTop 元素的内容顶部（卷起来的）到它的视口可见内容（的顶部）的距离的度量
+        // scrollHeight 的值等于该元素在不使用滚动条的情况下为了适应视口中所用内容所需的最小高度
+        ele.scrollTop = ele.scrollHeight
+      }
+
+      // 浏览器控制台输入
+      // ws.send('hello!', { binary: false })
+    </script>
+  </body>
+</html>

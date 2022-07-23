@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chat 聊天</title>
+    <style>
+      #username {
+        color: hotpink;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>WebSocket 聊天室</h2>
+    <h4>
+      欢迎
+      <b id="username"></b>
+      用户来到聊天室！开始愉快聊天吧！
+    </h4>
+    <input type="text" id="msgText" />
+    <select id="selectUser"></select>
+    <button id="sendMsg">发送信息</button>
+
+    <script>
+      const msgText = document.querySelector('#msgText')
+      const selectUser = document.querySelector('#selectUser')
+      const sendMsg = document.querySelector('#sendMsg')
+      const username = document.querySelector('#username')
+      username.innerHTML = localStorage.getItem('username')
+
+      const WebSocketType = {
+        Error: 0, // 错误
+        GetList: 1, // 获取列表
+        GroupChat: 2, // 群聊
+        SingleChat: 3, // 私聊
+      }
+      const token = localStorage.getItem('mu_token')
+      // 建立 WebSocket连接 带着token，后端验证
+      const ws = new WebSocket(`ws://localhost:8080?token=${token}`)
+
+      // 监听连接
+      ws.onopen = () => {
+        console.log('连接成功！')
+      }
+
+      // 监听消息
+      ws.onmessage = msgObj => {
+        const msg = JSON.parse(msgObj.data)
+        // console.log('收到一条信息：', msg)
+        switch (msg.type) {
+          // 连接错误
+          case WebSocketType.Error:
+            localStorage.removeItem('mu_token')
+            location.href = '/login'
+            break
+
+          // 群聊
+          case WebSocketType.GroupChat:
+            const title = msg.user ? msg.user.username : '广播'
+            console.log(title + '：', msg.data)
+            break
+
+          // 私聊
+          case WebSocketType.SingleChat:
+            console.log(msg.user.username + '：', msg.data)
+            break
+
+          // 获取列表
+          case WebSocketType.GetList:
+            // 浏览器控制台输入
+            // ws.send(JSON.stringify({type:1}))
+            const userList = JSON.parse(msg.data)
+            console.log('获取列表：', userList)
+            selectUser.innerHTML = ''
+            selectUser.innerHTML =
+              `<option value="all">全部用户</option>` +
+              userList
+                .map(item => `<option value="${item.username}">${item.username}</option>`)
+                .join('')
+            break
+
+          default:
+            break
+        }
+      }
+
+      // 监听错误
+      ws.onerror = () => {
+        console.log('连接失败！')
+      }
+
+      sendMsg.onclick = () => {
+        if (selectUser.value === 'all') {
+          console.log('群发')
+          ws.send(createMsg(WebSocketType.GroupChat, null, msgText.value))
+        } else {
+          console.log('私聊')
+          ws.send(createMsg(WebSocketType.SingleChat, null, msgText.value, selectUser.value))
+        }
+      }
+
+      function createMsg(type, user, data, to) {
+        return JSON.stringify({
+          type,
+          user,
+          data,
+          to,
+        })
+      }
+
+      // 浏览器控制台输入
+      // ws.send('hello!', { binary: false })
+    </script>
+  </body>
+</html>
